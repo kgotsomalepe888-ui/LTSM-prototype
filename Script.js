@@ -1,14 +1,35 @@
-// Simulated database (replace with Firebase or similar in production)
+// Simulated database
 let textbooks = JSON.parse(localStorage.getItem('textbooks')) || [];
+let isLoggedIn = false;
 
-// Show/hide sections
+// Login functionality
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    if (username === 'admin' && password === 'password123') { // Simple auth (replace with secure method)
+        isLoggedIn = true;
+        document.getElementById('login').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+        updateDashboard();
+    } else {
+        alert('Invalid credentials');
+    }
+});
+
+function logout() {
+    isLoggedIn = false;
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('login').style.display = 'flex';
+}
+
 function showSection(sectionId) {
     document.querySelectorAll('.section').forEach(section => {
         section.style.display = section.id === sectionId ? 'block' : 'none';
     });
+    if (sectionId === 'dashboard') updateDashboard();
 }
 
-// Handle form submission
 document.getElementById('textbookForm').addEventListener('submit', function(e) {
     e.preventDefault();
     const bookId = document.getElementById('bookId').value;
@@ -17,14 +38,15 @@ document.getElementById('textbookForm').addEventListener('submit', function(e) {
 
     textbooks.push({ bookId, studentName, condition });
     localStorage.setItem('textbooks', JSON.stringify(textbooks));
-
     document.getElementById('confirmation').innerText = `Textbook ${bookId} for ${studentName} recorded as ${condition}.`;
     this.reset();
-    updateReport();
+    if (isLoggedIn) updateDashboard();
 });
 
-// Update admin report table
-function updateReport() {
+function updateDashboard() {
+    document.getElementById('totalBooks').innerText = textbooks.length;
+    document.getElementById('damagedLost').innerText = textbooks.filter(b => b.condition === 'Damaged' || b.condition === 'Lost').length;
+
     const reportBody = document.getElementById('reportBody');
     reportBody.innerHTML = '';
     textbooks.forEach(book => {
@@ -32,39 +54,23 @@ function updateReport() {
         row.innerHTML = `<td>${book.bookId}</td><td>${book.studentName}</td><td>${book.condition}</td>`;
         reportBody.appendChild(row);
     });
-    updateChart();
-}
-
-// Generate condition breakdown chart
-function updateChart() {
-    const conditions = ['New', 'Good', 'Acceptable', 'Damaged', 'Lost'];
-    const counts = conditions.map(condition => 
-        textbooks.filter(book => book.condition === condition).length
-    );
 
     new Chart(document.getElementById('conditionChart'), {
         type: 'bar',
         data: {
-            labels: conditions,
+            labels: ['New', 'Good', 'Acceptable', 'Damaged', 'Lost'],
             datasets: [{
                 label: 'Textbook Conditions',
-                data: counts,
-                backgroundColor: ['#28a745', '#007bff', '#ffc107', '#dc3545', '#6c757d']
+                data: ['New', 'Good', 'Acceptable', 'Damaged', 'Lost'].map(c => textbooks.filter(b => b.condition === c).length),
+                backgroundColor: ['#28a745', '#6cc070', '#b3e0b3', '#ff6f61', '#ffd700']
             }]
         },
-        options: {
-            scales: {
-                y: { beginAtZero: true }
-            }
-        }
+        options: { scales: { y: { beginAtZero: true } } }
     });
 }
 
-// Generate Damaged & Lost report
 function generateDamagedLostReport() {
-    const damagedLost = textbooks.filter(book => 
-        book.condition === 'Damaged' || book.condition === 'Lost'
-    );
+    const damagedLost = textbooks.filter(book => book.condition === 'Damaged' || book.condition === 'Lost');
     const reportDiv = document.getElementById('damagedLostReport');
     reportDiv.innerHTML = '<h4>Damaged & Lost Books</h4>';
     if (damagedLost.length === 0) {
@@ -80,5 +86,9 @@ function generateDamagedLostReport() {
     reportDiv.appendChild(ul);
 }
 
-// Initialize report on page load
-updateReport();
+// Initial load
+if (isLoggedIn) {
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('login').style.display = 'none';
+    updateDashboard();
+                                  }
